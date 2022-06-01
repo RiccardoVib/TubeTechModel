@@ -7,6 +7,8 @@ import tensorflow as tf
 from librosa import display
 import matplotlib.pyplot as plt
 
+
+
 def get_batches(x, y, z, b_size, shuffle=True, seed=99):
     np.random.seed(seed)
     indxs = np.arange(tf.shape(x)[0])
