@@ -16,18 +16,22 @@ from tensorflow.keras.optimizers import Adam, SGD
 import pickle
 from TrainFunctionality import root_mean_squared_error
 
+# from tensorflow.compat.v1 import ConfigProto
+# from tensorflow.compat.v1 import InteractiveSession
+# config = ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = InteractiveSession(config=config)
 
-
-def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
+def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     ckpt_flag = kwargs.get('ckpt_flag', False)
     b_size = kwargs.get('b_size', 32)
     learning_rate = kwargs.get('learning_rate', 0.001)
-    encoder_units = kwargs.get('encoder_units', [8, 8])
-    decoder_units = kwargs.get('decoder_units', [8, 8])
+    encoder_units = kwargs.get('encoder_units', [64])
+    decoder_units = kwargs.get('decoder_units', [64])
     if encoder_units[-1] != decoder_units[0]:
         raise ValueError('Final encoder layer must same units as first decoder layer!')
-    model_save_dir = kwargs.get('model_save_dir', '../../LSTM_TrainedModels')
-    save_folder = kwargs.get('save_folder', 'LSTM_enc_dec_Testing')
+    model_save_dir = kwargs.get('model_save_dir', '/scratch/users/riccarsi/TrainedModels')
+    save_folder = kwargs.get('save_folder', 'ED_Testing')
     drop = kwargs.get('drop', 0.)
     opt_type = kwargs.get('opt_type', 'Adam')
     loss_type = kwargs.get('loss_type', 'mse')
@@ -48,7 +52,7 @@ def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
 
 
     if data is None:
-        x, y, x_val, y_val, x_test, y_test, scaler, zero_value, fs = get_data(data_dir=data_dir, w_length=w_length, seed=seed)
+        x, y, x_val, y_val, x_test, y_test, scaler, fs = get_data(data_dir=data_dir, w_length=w_length, seed=seed)
     else:
         x = data['x']
         y = data['y']
@@ -187,9 +191,10 @@ def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
 
 if __name__ == '__main__':
     data_dir = '../Files'
+    #data_dir = '/scratch/users/riccarsi/Files'
     seed = 422
     #start = time.time()
-    trainLSTM(data_dir=data_dir,
+    trainED(data_dir=data_dir,
               model_save_dir='../TrainedModels',
               save_folder='ED',
               ckpt_flag=True,
