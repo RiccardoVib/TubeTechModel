@@ -14,7 +14,7 @@ from tensorflow.keras.layers import Input, Dense, LSTM
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam, SGD
 import pickle
-
+from TrainFunctionality import root_mean_squared_error
 
 
 
@@ -139,7 +139,7 @@ def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
             print("Initializing random weights.")
             
     
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.000001, patience=20, restore_best_weights=True, verbose=0)
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0000001, patience=20, restore_best_weights=True, verbose=0)
     callbacks += [early_stopping_callback]
 
     #train
@@ -147,7 +147,7 @@ def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
                             validation_data=([x_val[:,:-1,:], x_val[:,-1, 0]], y_val[:, -1]),
                             callbacks=callbacks)
 
-    predictions_test = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
+    #predictions_test = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
 
     if ckpt_flag:
         best = tf.train.latest_checkpoint(ckpt_dir)
@@ -174,12 +174,14 @@ def trainLSTM(data_dir, epochs, seed=422, data=None, **kwargs):
         # 'Train_loss': results.history['loss'],
         'Val_loss': results.history['val_loss']
         }
-        print(results)
+    print(results)
+
     if ckpt_flag:
         with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.txt'])), 'w') as f:
             for key, value in results.items():
                 print('\n', key, '  : ', value, file=f)
             pickle.dump(results, open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.pkl'])), 'wb'))
+
     return results
 
 
