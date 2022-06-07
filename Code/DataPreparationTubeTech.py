@@ -12,8 +12,9 @@ def get_keys_from_value(d, val):
     return [k for k, v in d.items() if v == val]
 
 def data_preparation():
-    data_dir = 'C:/Users/riccarsi/Desktop/TubeTech2/Wav'
-    factor = 2#6#3
+    #data_dir = 'C:/Users/riccarsi/Desktop/TubeTech2/Wav'
+    data_dir = '/Users/riccardosimionato/OneDrive - Universitetet i Oslo/Datasets/TubeTech/Wav'
+    factor = 2
     save_dir = '../Files'
     file_dirs = glob.glob(os.path.normpath('/'.join([data_dir, '*.wav'])))
     L = 21120000
@@ -34,13 +35,14 @@ def data_preparation():
         if first == True:
             inp = audio_stereo[960:L, 0]
             inp = audio_format.pcm2float(inp)
-            inp = amp*inp
+            #inp = amp*inp
             inp = signal.resample_poly(inp, 1, factor)
             collector['input'].append(inp)
             first = False
         #960 due to 20ms of delay
         tar = audio_stereo[960+1:L+1, 1]
         tar = audio_format.pcm2float(tar)
+        tar = tar*amp
         tar = signal.resample_poly(tar, 1, factor)
 
         #target is delayed by one sample due the system processing so
@@ -81,8 +83,7 @@ def divede_chuncks():
             tar_temp = tars[n, i*L: (i+1)*L]
 
             #fig, ax = plt.subplots()
-            #ax.set(ylim=[-0.3, 0.3])
-            #display.waveshow(inp_temp, sr=48000, ax=ax)
+            #display.waveshow(tar_temp, sr=48000, ax=ax)#0.4
             #plt.show()
 
             collector['target'].append(tar_temp)
@@ -95,15 +96,19 @@ def divede_chuncks():
 
         inp_temp = inp[0, i * L: (i + 1) * L]
         collector['input'].append(inp_temp)
+        #fig, ax = plt.subplots()
+        #display.waveshow(inp_temp, sr=48000, ax=ax)#0.
+        #plt.show()
 
     file_data = open(os.path.normpath('/'.join([data_dir, 'TubeTech_data_chuncks.pickle'])), 'wb')
     pickle.dump(collector, file_data)
     file_data.close()
 
 def match_amplitude():
-    data_dir = 'C:/Users/riccarsi/Desktop/TubeTech2/Wav/Reference'
+    #data_dir = 'C:/Users/riccarsi/Desktop/TubeTech2/Wav/Reference'
+    data_dir = '/Users/riccardosimionato/OneDrive - Universitetet i Oslo/Datasets/TubeTech/Wav/Reference'
 
-    file_dirs = glob.glob(os.path.normpath('/'.join([data_dir, 'TubeTech_difference_sines.wav'])))
+    file_dirs = glob.glob(os.path.normpath('/'.join([data_dir, 'TubeTech_0ff.wav'])))
     for file in file_dirs:
         fs, audio_stereo = wavfile.read(file) #fs= 96,000 Hz
         inp = audio_stereo[:, 0]
@@ -113,13 +118,19 @@ def match_amplitude():
         max_inp = np.max(inp)
         max_tar = np.max(tar)
 
-        # inp = inp*max_tar/max_inp
+        tar = tar*max_inp/max_tar
+        #inp = inp*max_tar/max_inp
         # max_inp = np.max(inp)
         # max_tar = np.max(tar)
         # max_inp == max_tar
-        return max_tar/max_inp
+
+        #fig, ax = plt.subplots()
+        #display.waveshow(inp, sr=48000, ax=ax)#0.6
+        #display.waveshow(tar, sr=48000, ax=ax)#0.3
+        #plt.show()
+        return max_inp/max_tar#1.603835
 
 if __name__ == '__main__':
 
-    data_preparation()
+    #data_preparation()
     divede_chuncks()
