@@ -33,7 +33,7 @@ def get_batches(x, b_size, shuffle=True, seed=99):
 
     return indexes
 
-def get_data(data_dir, seed=422):
+def prepare_data(data_dir, seed=422):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -85,10 +85,10 @@ def get_data(data_dir, seed=422):
     x_, y_, x, y, x_val, y_val, x_test, y_test = [], [], [], [], [], [], [], []
     z_, z, z_val, z_test = [], [], [], []
 
-    N = tars.shape[0]
-    n_train = N//100*70
-    n_val = n_train + (N-n_train)//2
-    n_test = n_train + n_val
+    N = tars.shape[0]#1155
+    n_train = N//100*70#770
+    n_val = n_train + (N-n_train)//2#962
+    N_validation = (N-n_train)//2
     for ind in range(len(indexes)):
         for index in range(len(indexes[ind])):
 
@@ -108,20 +108,95 @@ def get_data(data_dir, seed=422):
     x = x_[:n_train]
     y = y_[:n_train]
     z = z_[:n_train]
-    x_val = x_[n_train:n_val]
-    y_val = y_[n_train:n_val]
-    z_val = z_[n_train:n_val]
-    x_test = x_[n_test:]
-    y_test = y_[n_test:]
-    z_test = z_[n_test:]
+    x_val = x_[n_train:n_val+1]
+    y_val = y_[n_train:n_val+1]
+    z_val = z_[n_train:n_val+1]
+    x_test = x_[n_val+1:]
+    y_test = y_[n_val+1:]
+    z_test = z_[n_val+1:]
 
-    return x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler
+    return N, N_validation, x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler
+
+def get_data(data_dir, index, number_of_iterations, window, seed=422):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+
+    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    Z = pickle.load(file_data)
+
+    scaler = Z['scaler']
+    N = Z['N']
+    n_iteration = N/number_of_iterations * index
+    indeces = [n_iteration * index, (1 + index) * n_iteration]
+    x = np.array(Z['x'][indeces[0] : indeces[1]])
+    y = np.array(Z['y'][indeces[0] : indeces[1]])
+    z = np.array(Z['z'][indeces[0] : indeces[1]])
+    x_val = np.array(Z['x_val'][indeces[0] : indeces[1]])
+    y_val = np.array(Z['y_val'][indeces[0] : indeces[1]])
+    z_val = np.array(Z['z_val'][indeces[0] : indeces[1]])
+
+    all_inp, all_tar = [], []
+    length = x.shape[1]
+    n_examples = x.shape[0]
+    for i in range(n_examples):
+        for t in range(length - window):
+            inp_temp = np.array([x[i, t:t + window], np.repeat(z[i, 0], window),
+                                 np.repeat(z[i, 1], window), np.repeat(z[i, 2], window), np.repeat(z[i, 3], window)])
+            all_inp.append(inp_temp.T)
+            tar_temp = np.array(y[i, t:t + window])
+            all_tar.append(tar_temp.T)
+
+    all_inp = np.array(all_inp)
+    all_tar = np.array(all_tar)
+
+    all_inp_val, all_tar_val = [], []
+    n_examples = x_val.shape[0]
+    for i in range(n_examples):
+        for t in range(length - window):
+            inp_temp = np.array([x_val[i, t:t + window], np.repeat(z_val[i, 0], window),
+                                 np.repeat(z_val[i, 1], window), np.repeat(z_val[i, 2], window), np.repeat(z_val[i, 3], window)])
+            all_inp_val.append(inp_temp.T)
+            tar_temp = np.array(y_val[i, t:t + window])
+            all_tar_val.append(tar_temp.T)
+
+    all_inp_val = np.array(all_inp_val)
+    all_tar_val = np.array(all_tar_val)
+
+    return N, N_validation, all_inp, all_tar,  all_inp_val, all_tar_val, scaler
+
+def get_test_data(data_dir, window, seed=422):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+
+    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    Z = pickle.load(file_data)
+    x = np.array(Z['x_test'])
+    y = np.array(Z['y_test'])
+
+    all_inp, all_tar = [], []
+    length = x.shape[1]
+    n_examples = x.shape[0]
+    for i in range(n_examples):
+        for t in range(length - window):
+            inp_temp = np.array([x[i, t:t + window], np.repeat(z[i, 0], window),
+                                 np.repeat(z[i, 1], window), np.repeat(z[i, 2], window), np.repeat(z[i, 3], window)])
+            all_inp.append(inp_temp.T)
+            tar_temp = np.array(y[i, t:t + window])
+            all_tar.append(tar_temp.T)
+
+    all_inp = np.array(all_inp)
+    all_tar = np.array(all_tar)
+
+    return all_inp, all_tar
+
 
 if __name__ == '__main__':
     data_dir = '../Files'
-    x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler = get_data(data_dir=data_dir, seed=422)
+    N, N_validation, x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler = prepare_data(data_dir=data_dir, seed=422)
 
-    data = {'x': x, 'y': y, 'z': z, 'x_val': x_val, 'y_val': y_val, 'z_val': z_val, 'x_test': x_test, 'y_test': y_test, 'z_test': z_test, 'scaler': scaler}
+    data = {'N': N, 'N_validation': N_validation, 'x': x, 'y': y, 'z': z, 'x_val': x_val, 'y_val': y_val, 'z_val': z_val, 'x_test': x_test, 'y_test': y_test, 'z_test': z_test, 'scaler': scaler}
 
     file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'wb')
     pickle.dump(data, file_data)

@@ -7,7 +7,7 @@ import os
 import time
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from GetDataTubeTech import get_data
+from GetDataTubeTech import get_data, get_test_data
 from scipy.io import wavfile
 from scipy import signal
 from tensorflow.keras.layers import Input, Dense, LSTM
@@ -50,17 +50,7 @@ def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     n_units_enc = n_units_enc[:-2]
     n_units_dec = n_units_dec[:-2]
 
-
-    if data is None:
-        x, y, x_val, y_val, x_test, y_test, scaler, fs = get_data(data_dir=data_dir, w_length=w_length, seed=seed)
-    else:
-        x = data['x']
-        y = data['y']
-        x_val = data['x_val']
-        y_val = data['y_val']
-        x_test = data['x_test']
-        y_test = data['y_test']
-        scaler = data['scaler']
+    N, x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, indeces=[0, 1], seed=seed)
 
     #T past values used to predict the next value
     T = x.shape[1] #time window
@@ -114,7 +104,6 @@ def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     else:
         raise ValueError('Please pass loss_type as either MAE or MSE')
 
-    # TODO: Currently not loading weights as we only save the best model... Should probably
     callbacks = []
     if ckpt_flag:
         ckpt_path = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'best', 'best.ckpt'))
@@ -147,18 +136,24 @@ def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     callbacks += [early_stopping_callback]
 
     #train
-    results = model.fit([x[:,:-1,:], x[:,-1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
-                            validation_data=([x_val[:,:-1,:], x_val[:,-1, 0]], y_val[:, -1]),
-                            callbacks=callbacks)
+    number_of_iterations=7
+
+    for n_iteration in range(7):
+        N, x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration, number_of_iterations=number_of_iterations, seed=seed)
+
+        results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
+                                validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
+                                callbacks=callbacks)
 
     #predictions_test = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
 
+    x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
     if ckpt_flag:
         best = tf.train.latest_checkpoint(ckpt_dir)
         if best is not None:
             print("Restored weights from {}".format(ckpt_dir))
             model.load_weights(best)
-    test_loss = model.evaluate([x_test[:,:-1,:], x_test[:, -1,  0].reshape(-1,1)], y_test[:, -1], batch_size=b_size, verbose=0)
+    test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1,  0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size, verbose=0)
     print('Test Loss: ', test_loss)
 
     results = {
