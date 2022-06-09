@@ -127,14 +127,19 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
 
     scaler = Z['scaler']
     N = Z['N']
-    n_iteration = N/number_of_iterations * index
-    indeces = [n_iteration * index, (1 + index) * n_iteration]
-    x = np.array(Z['x'][indeces[0] : indeces[1]])
-    y = np.array(Z['y'][indeces[0] : indeces[1]])
-    z = np.array(Z['z'][indeces[0] : indeces[1]])
-    x_val = np.array(Z['x_val'][indeces[0] : indeces[1]])
-    y_val = np.array(Z['y_val'][indeces[0] : indeces[1]])
-    z_val = np.array(Z['z_val'][indeces[0] : indeces[1]])
+    n_iteration = N/number_of_iterations
+    indeces = [int(n_iteration * index), int((1 + index) * n_iteration)]
+    x = np.array(Z['x'][indeces[0]: indeces[1]])
+    y = np.array(Z['y'][indeces[0]: indeces[1]])
+    z = np.array(Z['z'][indeces[0]: indeces[1]])
+
+    N_val = Z['N_validation']
+    n_iteration_v = N_val/number_of_iterations
+    indeces_v = [int(n_iteration_v * index), int((1 + index) * n_iteration_v)]
+
+    x_val = np.array(Z['x_val'][indeces_v[0]: indeces_v[1]])
+    y_val = np.array(Z['y_val'][indeces_v[0]: indeces_v[1]])
+    z_val = np.array(Z['z_val'][indeces_v[0]: indeces_v[1]])
 
     all_inp, all_tar = [], []
     length = x.shape[1]
@@ -150,6 +155,7 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
     all_inp = np.array(all_inp)
     all_tar = np.array(all_tar)
 
+
     all_inp_val, all_tar_val = [], []
     n_examples = x_val.shape[0]
     for i in range(n_examples):
@@ -163,7 +169,7 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
     all_inp_val = np.array(all_inp_val)
     all_tar_val = np.array(all_tar_val)
 
-    return N, N_validation, all_inp, all_tar,  all_inp_val, all_tar_val, scaler
+    return all_inp, all_tar,  all_inp_val, all_tar_val, scaler
 
 def get_test_data(data_dir, window, seed=422):
     np.random.seed(seed)

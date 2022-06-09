@@ -22,7 +22,7 @@ from TrainFunctionality import root_mean_squared_error
 # config.gpu_options.allow_growth = True
 # session = InteractiveSession(config=config)
 
-def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
+def trainED(data_dir, epochs, seed=422, **kwargs):
     ckpt_flag = kwargs.get('ckpt_flag', False)
     b_size = kwargs.get('b_size', 32)
     learning_rate = kwargs.get('learning_rate', 0.001)
@@ -50,11 +50,11 @@ def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     n_units_enc = n_units_enc[:-2]
     n_units_dec = n_units_dec[:-2]
 
-    N, x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, indeces=[0, 1], seed=seed)
+    #x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=0, number_of_iterations=7, seed=seed)
 
     #T past values used to predict the next value
-    T = x.shape[1] #time window
-    D = x.shape[2] #features
+    T = w_length#x.shape[1] #time window
+    D = 5#x.shape[2] #features
 
     encoder_inputs = Input(shape=(T-1,D), name='enc_input')
     first_unit_encoder = encoder_units.pop(0)
@@ -136,14 +136,38 @@ def trainED(data_dir, epochs, seed=422, data=None, **kwargs):
     callbacks += [early_stopping_callback]
 
     #train
-    number_of_iterations=7
+    number_of_iterations = 100#7
 
-    for n_iteration in range(7):
-        N, x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration, number_of_iterations=number_of_iterations, seed=seed)
+    for n_iteration in range(number_of_iterations):
+        x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration, number_of_iterations=number_of_iterations, seed=seed)
 
         results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
                                 validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
                                 callbacks=callbacks)
+
+        results = {
+            'Min_val_loss': np.min(results.history['val_loss']),
+            'Min_train_loss': np.min(results.history['loss']),
+            'b_size': b_size,
+            'learning_rate': learning_rate,
+            'drop': drop,
+            'opt_type': opt_type,
+            'loss_type': loss_type,
+            'layers_enc': layers_enc,
+            'layers_dec': layers_dec,
+            'n_units_enc': n_units_enc,
+            'n_units_dec': n_units_dec,
+            'w_length': w_length,
+            # 'Train_loss': results.history['loss'],
+            'Val_loss': results.history['val_loss']
+        }
+        #print(results)
+        if ckpt_flag:
+            with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
+                for key, value in results.items():
+                    print('\n', key, '  : ', value, file=f)
+                pickle.dump(results,
+                            open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])), 'wb'))
 
     #predictions_test = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
 
