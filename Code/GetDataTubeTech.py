@@ -180,6 +180,7 @@ def get_test_data(data_dir, window, seed=422):
     Z = pickle.load(file_data)
     x = np.array(Z['x_test'])
     y = np.array(Z['y_test'])
+    z = np.array(Z['y_test'])
 
     all_inp, all_tar = [], []
     length = x.shape[1]
