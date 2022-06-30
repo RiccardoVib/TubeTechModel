@@ -36,6 +36,7 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     opt_type = kwargs.get('opt_type', 'Adam')
     loss_type = kwargs.get('loss_type', 'mse')
     w_length = kwargs.get('w_length', 16)
+    generate_wav = kwargs.get('generate_wav', None)
 
     layers_enc = len(encoder_units)
     layers_dec = len(decoder_units)
@@ -169,8 +170,6 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
                 pickle.dump(results,
                             open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])), 'wb'))
 
-    #predictions_test = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
-
     x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
     if ckpt_flag:
         best = tf.train.latest_checkpoint(ckpt_dir)
@@ -179,6 +178,32 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
             model.load_weights(best)
     test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1,  0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size, verbose=0)
     print('Test Loss: ', test_loss)
+
+    if generate_wav is not None:
+        predictions = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
+        predictions = (scaler[0].inverse_transform(predictions)).reshape(-1)
+        x_test = (scaler[0].inverse_transform(x_test[:, :, 0])).reshape(-1)
+        y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
+
+        # Define directories
+        pred_name = '_pred.wav'
+        inp_name = '_inp.wav'
+        tar_name = '_tar.wav'
+
+        pred_dir = os.path.normpath(os.path.join(model_save_dir, save_folder, 'WavPredictions', pred_name))
+        inp_dir = os.path.normpath(os.path.join(model_save_dir, save_folder, 'WavPredictions', inp_name))
+        tar_dir = os.path.normpath(os.path.join(model_save_dir, save_folder, 'WavPredictions', tar_name))
+
+        if not os.path.exists(os.path.dirname(pred_dir)):
+            os.makedirs(os.path.dirname(pred_dir))
+
+        # Save Wav files
+        predictions = predictions.astype('int16')
+        x_test = x_test.astype('int16')
+        y_test = y_test.astype('int16')
+        wavfile.write(pred_dir, 48000, predictions)
+        wavfile.write(inp_dir, 48000, x_test)
+        wavfile.write(tar_dir, 48000, y_test)
 
     results = {
         'Test_Loss': test_loss,
@@ -223,7 +248,7 @@ if __name__ == '__main__':
               decoder_units=[64],
               epochs=100,
               loss_type='mse',
-              generate_wav=None,
+              generate_wav=2,
               w_length=16)
     #end = time.time()
     #print(end - start)

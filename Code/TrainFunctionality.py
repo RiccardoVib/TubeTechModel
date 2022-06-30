@@ -22,14 +22,19 @@ def FFT_loss_function(y_true, y_pred):
     Y_pred = tf.signal.rfft(tf.reshape(y_pred, [-1]))
     return tf.keras.metrics.mean_absolute_error(tf.math.real(Y_true), tf.math.real(Y_pred))
 
-
 def STFT_loss_function(y_true, y_pred):
-    Y_true = tf.math.real(tf.signal.stft(tf.reshape(y_true, [-1]), 8, 8))
-    Y_true = tf.math.log(tf.math.pow(Y_true, 2))
+    Y_true = tf.math.real(tf.signal.stft(tf.reshape(y_true, [-1]), 512, 512))
+    #Y_true = tf.math.log(tf.math.pow(Y_true, 2))
+    Y_true = tf.math.pow(Y_true, 2)
 
-    Y_pred = tf.math.real(tf.signal.stft(tf.reshape(y_pred, [-1]), 16, 16))
-    Y_pred = tf.math.log(tf.math.pow(Y_pred, 2))
+    Y_pred = tf.math.real(tf.signal.stft(tf.reshape(y_pred, [-1]), 512, 512))
+    #Y_pred = tf.math.log(tf.math.pow(Y_pred, 2))
+    Y_pred = tf.math.pow(Y_pred, 2)
+
     return root_mean_squared_error(Y_true, Y_pred)
+
+def combinedLoss(y_true, y_pred):
+    return ESR_loss_function(y_true, y_pred) + tf.keras.metrics.mean_squared_error(y_true, y_pred)
 
 
 def root_mean_squared_error(y_true, y_pred):
