@@ -126,16 +126,21 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
     Z = pickle.load(file_data)
 
     scaler = Z['scaler']
-    N = Z['N']
-    n_iteration = N/number_of_iterations
+    N = Z['N'] - 2*Z['N_validation'] - 1
+    n_iteration = N//number_of_iterations
     indeces = [int(n_iteration * index), int((1 + index) * n_iteration)]
+    if indeces[1] >= N:
+        indeces[1] = N-1
     x = np.array(Z['x'][indeces[0]: indeces[1]])
     y = np.array(Z['y'][indeces[0]: indeces[1]])
     z = np.array(Z['z'][indeces[0]: indeces[1]])
 
     N_val = Z['N_validation']
-    n_iteration_v = N_val/number_of_iterations
+    n_iteration_v = N_val//number_of_iterations
     indeces_v = [int(n_iteration_v * index), int((1 + index) * n_iteration_v)]
+
+    if indeces_v[1] >= N_val:
+        indeces_v[1] = N_val-1
 
     x_val = np.array(Z['x_val'][indeces_v[0]: indeces_v[1]])
     y_val = np.array(Z['y_val'][indeces_v[0]: indeces_v[1]])
