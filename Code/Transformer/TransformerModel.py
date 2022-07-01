@@ -1,11 +1,11 @@
 import tensorflow as tf
 from keras import layers, Sequential, Model
 #from tensorflow.python.keras.layers import MultiHeadAttention
-from Code.Preprocess import positional_encoding
+from Preprocess import positional_encoding
 from tensorflow.keras import layers
 import numpy as np
 import os
-from Code.GetDataTubeTech import get_data, get_test_data
+from GetDataTubeTech import get_data, get_test_data
 import pickle
 from scipy.io import wavfile
 
@@ -49,16 +49,16 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
     D = 5
 
     #inputs layers
-    inp_enc = tf.keras.Input(shape=[None, T, D])
+    inp_enc = tf.keras.Input(shape=(T, D))
     #inp_dec = tf.keras.Input(shape=[None, T, D])
     positional_encoding_enc = positional_encoding(T, d_model)
     #positional_encoding_dec = positional_encoding(T, d_model)
-    inp_enc = tf.keras.layers.Dense(d_model)(inp_enc) #embedding
+    inp_ = tf.keras.layers.Dense(d_model)(inp_enc) #embedding
     #inp_dec = tf.keras.layers.Dense(d_model)(inp_dec) #embedding
-    outputs_enc = inp_enc + positional_encoding_enc
+    outputs_enc = inp_ + positional_encoding_enc
     #outputs_dec = inp_dec + positional_encoding_dec
     outputs_enc = TransformerBlock(d_model, num_heads, ff_dim)(outputs_enc)
-    outputs_enc = tf.keras.layers.Dense(1, activation='sigmoid')(inp_enc)
+    outputs_enc = tf.keras.layers.Dense(1, activation='sigmoid')(outputs_enc)
 
     model = Model(inputs=inp_enc, outputs=outputs_enc)
     model.summary()
@@ -106,8 +106,8 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
         x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
                                               number_of_iterations=number_of_iterations, seed=seed)
 
-        results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
-                            validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
+        results = model.fit(x[:, :, :], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
+                            validation_data=(x_val[:, :, :], y_val[:, -1]),
                             callbacks=callbacks)
 
         results = {
@@ -143,13 +143,13 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
         if best is not None:
             print("Restored weights from {}".format(ckpt_dir))
             model.load_weights(best)
-    test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size,
+    test_loss = model.evaluate(x_test[:, :, :], y_test[:, -1], batch_size=b_size,
                                verbose=0)
     print('Test Loss: ', test_loss)
 
 
     if generate_wav is not None:
-        predictions = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
+        predictions = model.predict(x_test[:, :, :], batch_size=b_size)
         predictions = (scaler[0].inverse_transform(predictions)).reshape(-1)
         x_test = (scaler[0].inverse_transform(x_test[:, :, 0])).reshape(-1)
         y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
@@ -203,12 +203,12 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
     return results
 
 if __name__ == '__main__':
-    data_dir = '../Files'
+    data_dir = '../../Files'
     #data_dir = '/scratch/users/riccarsi/Files'
     seed = 422
     #start = time.time()
     trainMultiAttention(data_dir=data_dir,
-              model_save_dir='../TrainedModels',
+              model_save_dir='../../TrainedModels',
               save_folder='MultiAttention',
               ckpt_flag=True,
               b_size=128,
@@ -216,7 +216,7 @@ if __name__ == '__main__':
               d_model=512,
               ff_dim=512,
               num_heads=8,
-              epochs=100,
+              epochs=1,
               loss_type='mse',
               generate_wav=10,
               w_length=16)
