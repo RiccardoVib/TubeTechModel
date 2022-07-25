@@ -1,6 +1,7 @@
 import tensorflow as tf
-from keras import layers, Sequential, Model
-#from tensorflow.python.keras.layers import MultiHeadAttention
+from tensorflow.keras import layers, Sequential, Model
+from TrainFunctionality import combinedLoss
+# from tensorflow.python.keras.layers import MultiHeadAttention
 from Preprocess import positional_encoding
 from tensorflow.keras import layers
 import numpy as np
@@ -14,7 +15,7 @@ class TransformerBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
         super(TransformerBlock, self).__init__()
         self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
-        self.ffn = Sequential([layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),])
+        self.ffn = Sequential([layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim), ])
         self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = layers.Dropout(rate)
@@ -30,7 +31,6 @@ class TransformerBlock(layers.Layer):
 
 
 def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
-
     ckpt_flag = kwargs.get('ckpt_flag', False)
     b_size = kwargs.get('b_size', 32)
     learning_rate = kwargs.get('learning_rate', 0.001)
@@ -48,15 +48,15 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
     T = w_length
     D = 5
 
-    #inputs layers
+    # inputs layers
     inp_enc = tf.keras.Input(shape=(T, D))
-    #inp_dec = tf.keras.Input(shape=[None, T, D])
+    # inp_dec = tf.keras.Input(shape=[None, T, D])
     positional_encoding_enc = positional_encoding(T, d_model)
-    #positional_encoding_dec = positional_encoding(T, d_model)
-    inp_ = tf.keras.layers.Dense(d_model)(inp_enc) #embedding
-    #inp_dec = tf.keras.layers.Dense(d_model)(inp_dec) #embedding
+    # positional_encoding_dec = positional_encoding(T, d_model)
+    inp_ = tf.keras.layers.Dense(d_model)(inp_enc)  # embedding
+    # inp_dec = tf.keras.layers.Dense(d_model)(inp_dec) #embedding
     outputs_enc = inp_ + positional_encoding_enc
-    #outputs_dec = inp_dec + positional_encoding_dec
+    # outputs_dec = inp_dec + positional_encoding_dec
     outputs_enc = TransformerBlock(d_model, num_heads, ff_dim)(outputs_enc)
     outputs_enc = tf.keras.layers.Dense(1, activation='sigmoid')(outputs_enc)
 
@@ -100,7 +100,7 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
     callbacks += [early_stopping_callback]
 
     # train
-    number_of_iterations = 100  # 7
+    number_of_iterations = 50  # 7
 
     for n_iteration in range(number_of_iterations):
         x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
@@ -109,7 +109,6 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
         results = model.fit(x[:, :, :], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
                             validation_data=(x_val[:, :, :], y_val[:, -1]),
                             callbacks=callbacks)
-
         results = {
             'Min_val_loss': np.min(results.history['val_loss']),
             'Min_train_loss': np.min(results.history['loss']),
@@ -134,8 +133,7 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
                 pickle.dump(results,
                             open(os.path.normpath(
                                 '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])),
-                                 'wb'))
-
+                                'wb'))
 
     x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
     if ckpt_flag:
@@ -146,7 +144,6 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
     test_loss = model.evaluate(x_test[:, :, :], y_test[:, -1], batch_size=b_size,
                                verbose=0)
     print('Test Loss: ', test_loss)
-
 
     if generate_wav is not None:
         predictions = model.predict(x_test[:, :, :], batch_size=b_size)
@@ -174,8 +171,6 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
         wavfile.write(inp_dir, 48000, x_test)
         wavfile.write(tar_dir, 48000, y_test)
 
-
-
     results = {
         'Test_Loss': test_loss,
         'Min_val_loss': np.min(results.history['val_loss']),
@@ -202,21 +197,21 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
 
     return results
 
+
 if __name__ == '__main__':
-    data_dir = '../../Files'
-    #data_dir = '/scratch/users/riccarsi/Files'
+    data_dir = '../Files'
     seed = 422
-    #start = time.time()
+    # start = time.time()
     trainMultiAttention(data_dir=data_dir,
-              model_save_dir='../../TrainedModels',
-              save_folder='MultiAttention',
-              ckpt_flag=True,
-              b_size=128,
-              learning_rate=0.001,
-              d_model=512,
-              ff_dim=512,
-              num_heads=8,
-              epochs=1,
-              loss_type='mse',
-              generate_wav=10,
-              w_length=16)
+                        model_save_dir='../TrainedModels',
+                        save_folder='MultiAttention',
+                        ckpt_flag=True,
+                        b_size=128,
+                        learning_rate=0.001,
+                        d_model=512,
+                        ff_dim=512,
+                        num_heads=8,
+                        epochs=100,
+                        loss_type='combined',
+                        generate_wav=10,
+                        w_length=16)

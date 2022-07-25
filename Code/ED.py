@@ -1,12 +1,13 @@
-#import tensorboard
-#load_ext tensorboard
-#rm -rf ./logs/
+# import tensorboard
+# load_ext tensorboard
+# rm -rf ./logs/
 import datetime
 import numpy as np
 import os
 import time
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from TrainFunctionality import combinedLoss
 from GetDataTubeTech import get_data, get_test_data
 from scipy.io import wavfile
 from scipy import signal
@@ -14,13 +15,16 @@ from tensorflow.keras.layers import Input, Dense, LSTM
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam, SGD
 import pickle
-from TrainFunctionality import root_mean_squared_error
 
-# from tensorflow.compat.v1 import ConfigProto
-# from tensorflow.compat.v1 import InteractiveSession
-# config = ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = InteractiveSession(config=config)
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+
+#from tensorflow.compat.v1 import ConfigProto
+#from tensorflow.compat.v1 import InteractiveSession
+
+#config = ConfigProto()
+#config.gpu_options.allow_growth = True
+#session = InteractiveSession(config=config)
+
 
 def trainED(data_dir, epochs, seed=422, **kwargs):
     ckpt_flag = kwargs.get('ckpt_flag', False)
@@ -51,13 +55,13 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     n_units_enc = n_units_enc[:-2]
     n_units_dec = n_units_dec[:-2]
 
-    #x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=0, number_of_iterations=7, seed=seed)
+    # x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=0, number_of_iterations=7, seed=seed)
 
-    #T past values used to predict the next value
-    T = w_length#x.shape[1] #time window
-    D = 5#x.shape[2] #features
+    # T past values used to predict the next value
+    T = w_length  # x.shape[1] #time window
+    D = 5  # x.shape[2] #features
 
-    encoder_inputs = Input(shape=(T-1,D), name='enc_input')
+    encoder_inputs = Input(shape=(T - 1, D), name='enc_input')
     first_unit_encoder = encoder_units.pop(0)
     if len(encoder_units) > 0:
         last_unit_encoder = encoder_units.pop()
@@ -70,19 +74,21 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
 
     encoder_states = [state_h, state_c]
 
-    decoder_inputs = Input(shape=(1,1), name='dec_input')
+    decoder_inputs = Input(shape=(1, 1), name='dec_input')
     first_unit_decoder = decoder_units.pop(0)
     if len(decoder_units) > 0:
         last_unit_decoder = decoder_units.pop()
         outputs = LSTM(first_unit_decoder, return_sequences=True, name='LSTM_De0', dropout=drop)(decoder_inputs,
-                                                                                   initial_state=encoder_states)
+                                                                                                 initial_state=encoder_states)
         for i, unit in enumerate(decoder_units):
             outputs = LSTM(unit, return_sequences=True, name='LSTM_De' + str(i + 1), dropout=drop)(outputs)
-        outputs, _, _ = LSTM(last_unit_decoder, return_sequences=True, return_state=True, name='LSTM_DeFin', dropout=drop)(outputs)
+        outputs, _, _ = LSTM(last_unit_decoder, return_sequences=True, return_state=True, name='LSTM_DeFin',
+                             dropout=drop)(outputs)
     else:
-        outputs, _, _ = LSTM(first_unit_decoder, return_sequences=True, return_state=True, name='LSTM_De', dropout=drop)(
-                                                                                        decoder_inputs,
-                                                                                        initial_state=encoder_states)
+        outputs, _, _ = LSTM(first_unit_decoder, return_sequences=True, return_state=True, name='LSTM_De',
+                             dropout=drop)(
+            decoder_inputs,
+            initial_state=encoder_states)
     if drop != 0.:
         outputs = tf.keras.layers.Dropout(drop, name='DropLayer')(outputs)
     decoder_outputs = Dense(1, activation='sigmoid', name='DenseLay')(outputs)
@@ -100,18 +106,19 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
         model.compile(loss='mae', metrics=['mae'], optimizer=opt)
     elif loss_type == 'mse':
         model.compile(loss='mse', metrics=['mse'], optimizer=opt)
-    elif loss_type == 'rmse':
-        model.compile(loss=root_mean_squared_error, metrics=['root_mean_squared_error'], optimizer=opt)
+    elif loss_type == 'combined':
+        model.compile(loss=combinedLoss, metrics=combinedLoss, optimizer=opt)
     else:
         raise ValueError('Please pass loss_type as either MAE or MSE')
 
     callbacks = []
     if ckpt_flag:
         ckpt_path = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'best', 'best.ckpt'))
-        ckpt_path_latest = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'latest', 'latest.ckpt'))
+        ckpt_path_latest = os.path.normpath(
+            os.path.join(model_save_dir, save_folder, 'Checkpoints', 'latest', 'latest.ckpt'))
         ckpt_dir = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'best'))
         ckpt_dir_latest = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'latest'))
-        
+
         if not os.path.exists(os.path.dirname(ckpt_dir)):
             os.makedirs(os.path.dirname(ckpt_dir))
         if not os.path.exists(os.path.dirname(ckpt_dir_latest)):
@@ -119,7 +126,8 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
 
         ckpt_callback = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path, monitor='val_loss', mode='min',
                                                            save_best_only=True, save_weights_only=True, verbose=1)
-        ckpt_callback_latest = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path_latest, monitor='val_loss', mode='min',
+        ckpt_callback_latest = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path_latest, monitor='val_loss',
+                                                                  mode='min',
                                                                   save_best_only=False, save_weights_only=True,
                                                                   verbose=1)
         callbacks += [ckpt_callback, ckpt_callback_latest]
@@ -131,44 +139,49 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
             # print('Starting from epoch: ', start_epoch + 1)
         else:
             print("Initializing random weights.")
-            
-    
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0000001, patience=20, restore_best_weights=True, verbose=0)
+
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0000001, patience=20,
+                                                               restore_best_weights=True, verbose=0)
     callbacks += [early_stopping_callback]
 
-    #train
-    number_of_iterations = 2#7
+    # train
+    number_of_iterations = 7
 
-    for n_iteration in range(number_of_iterations):
-        x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration, number_of_iterations=number_of_iterations, seed=seed)
+    for n_iteration in range(2):  # number_of_iterations):
+        x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
+                                              number_of_iterations=number_of_iterations, seed=seed)
 
-        #results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
-        #                        validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
-        #                        callbacks=callbacks)
+        results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
+                            validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
+                            callbacks=callbacks)
+        print(n_iteration)
 
-        # results = {
-        #     'Min_val_loss': np.min(results.history['val_loss']),
-        #     'Min_train_loss': np.min(results.history['loss']),
-        #     'b_size': b_size,
-        #     'learning_rate': learning_rate,
-        #     'drop': drop,
-        #     'opt_type': opt_type,
-        #     'loss_type': loss_type,
-        #     'layers_enc': layers_enc,
-        #     'layers_dec': layers_dec,
-        #     'n_units_enc': n_units_enc,
-        #     'n_units_dec': n_units_dec,
-        #     'w_length': w_length,
-        #     # 'Train_loss': results.history['loss'],
-        #     'Val_loss': results.history['val_loss']
-        # }
-        #print(results)
-        # if ckpt_flag:
-        #     with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
-        #         for key, value in results.items():
-        #             print('\n', key, '  : ', value, file=f)
-        #         pickle.dump(results,
-        #                     open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])), 'wb'))
+        results = {
+            'Min_val_loss': np.min(results.history['val_loss']),
+            'Min_train_loss': np.min(results.history['loss']),
+            'b_size': b_size,
+            'learning_rate': learning_rate,
+            'drop': drop,
+            'opt_type': opt_type,
+            'loss_type': loss_type,
+            'layers_enc': layers_enc,
+            'layers_dec': layers_dec,
+            'n_units_enc': n_units_enc,
+            'n_units_dec': n_units_dec,
+            'w_length': w_length,
+            # 'Train_loss': results.history['loss'],
+            'Val_loss': results.history['val_loss']
+        }
+        # print(results)
+        if ckpt_flag:
+            with open(os.path.normpath(
+                    '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
+                for key, value in results.items():
+                    print('\n', key, '  : ', value, file=f)
+                pickle.dump(results,
+                            open(os.path.normpath(
+                                '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])),
+                                 'wb'))
 
     x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
     if ckpt_flag:
@@ -176,11 +189,12 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
         if best is not None:
             print("Restored weights from {}".format(ckpt_dir))
             model.load_weights(best)
-    test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1,  0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size, verbose=0)
+    test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size,
+                               verbose=0)
     print('Test Loss: ', test_loss)
 
     if generate_wav is not None:
-        predictions = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1,1)], batch_size=b_size)
+        predictions = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], batch_size=b_size)
         predictions = (scaler[0].inverse_transform(predictions)).reshape(-1)
         x_test = (scaler[0].inverse_transform(x_test[:, :, 0])).reshape(-1)
         y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
@@ -221,7 +235,7 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
         'w_length': w_length,
         # 'Train_loss': results.history['loss'],
         'Val_loss': results.history['val_loss']
-        }
+    }
     print(results)
 
     if ckpt_flag:
@@ -235,20 +249,19 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
 
 if __name__ == '__main__':
     data_dir = '../Files'
-    #data_dir = '/scratch/users/riccarsi/Files'
     seed = 422
-    #start = time.time()
+    # start = time.time()
     trainED(data_dir=data_dir,
-              model_save_dir='../TrainedModels',
-              save_folder='ED',
-              ckpt_flag=True,
-              b_size=128,
-              learning_rate=0.001,
-              encoder_units=[64],
-              decoder_units=[64],
-              epochs=100,
-              loss_type='mse',
-              generate_wav=2,
-              w_length=16)
-    #end = time.time()
-    #print(end - start)
+            model_save_dir='../TrainedModels',
+            save_folder='ED_TubeTech',
+            ckpt_flag=True,
+            b_size=128,
+            learning_rate=0.001,
+            encoder_units=[64],
+            decoder_units=[64],
+            epochs=100,
+            loss_type='combined',
+            generate_wav=1,
+            w_length=16)
+    # end = time.time()
+    # print(end - start)
