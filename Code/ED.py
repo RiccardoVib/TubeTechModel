@@ -2,7 +2,7 @@
 # load_ext tensorboard
 # rm -rf ./logs/
 import datetime
-import numpy as np
+
 import os
 import time
 import tensorflow as tf
@@ -15,7 +15,7 @@ from tensorflow.keras.layers import Input, Dense, LSTM
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam, SGD
 import pickle
-
+import numpy as np
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 #from tensorflow.compat.v1 import ConfigProto
@@ -145,9 +145,9 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     callbacks += [early_stopping_callback]
 
     # train
-    number_of_iterations = 7
+    number_of_iterations = 50
 
-    for n_iteration in range(2):  # number_of_iterations):
+    for n_iteration in range(number_of_iterations):
         x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
                                               number_of_iterations=number_of_iterations, seed=seed)
 
