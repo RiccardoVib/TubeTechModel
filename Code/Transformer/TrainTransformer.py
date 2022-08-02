@@ -8,16 +8,10 @@ from scipy.io import wavfile
 from Transformer import Transformer
 from TrainFunctionality import CustomSchedule, PlotLossesSubPlots
 from tensorflow.keras.utils import Progbar
-from GetDataPiano import get_data
+from GetDataTubeTech import get_data
 
 def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
 
-    x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
-    
-    number_of_iterations = 1 
-    n_iteration = 1
-    x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration, number_of_iterations=number_of_iterations, seed=seed)
-    
     # -----------------------------------------------------------------------------------------------------------------
     # Set-up model, optimiser, lr_sched and losses:
     # -----------------------------------------------------------------------------------------------------------------
@@ -29,7 +23,7 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
     ckpt_flag = kwargs.get('ckpt_flag', False)
     opt_type = kwargs.get('opt_type', 'Adam')
     plot_progress = kwargs.get('plot_progress', True)
-    max_length = sigs.shape[1]
+
     learning_rate = kwargs.get('learning_rate', None)
     b_size = kwargs.get('b_size', 16)
     num_layers = kwargs.get('num_layers', 4)
@@ -38,6 +32,7 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
     num_heads = kwargs.get('num_heads', 8)
     drop = kwargs.get('drop', .2)
     window = kwargs.get('window', 16)
+
     output_dim = window
     param=5
     
@@ -58,15 +53,15 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
         raise ValueError('Please pass opt_type as either Adam or SGD')
 
     transformer = Transformer(num_layers=num_layers,
-                                          d_model=d_model,
-                                          num_heads=num_heads,
-                                          dff=dff,  # Hidden layer size of feedforward networks
-                                          input_vocab_size=None,  # Not relevant for ours as we don't use embedding
-                                          target_vocab_size=None,
-                                          pe_input=max_length,  # Max length for positional encoding input
-                                          pe_target=max_length,
-                                          output_dim=output_dim,
-                                          rate=drop)  # Dropout rate
+                              d_model=d_model,
+                              num_heads=num_heads,
+                              dff=dff,  # Hidden layer size of feedforward networks
+                              input_vocab_size=None,  # Not relevant for ours as we don't use embedding
+                              target_vocab_size=None,
+                              pe_input=window,  # Max length for positional encoding input
+                              pe_target=window,
+                              output_dim=output_dim,
+                              rate=drop)  # Dropout rate
 
     # loss_fn = loss_fn()#tf.keras.losses.MeanAbsoluteError()
 
@@ -210,16 +205,15 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
         #val_loss_mse.reset_states()
 
         # Get batches
-        #x_batches, y_batches = get_batches(x, y, b_size=b_size, shuffle=True, seed=epoch)
-
+        x_batches, y_batches, x_val_batches, y_val_batches, scaler = get_data(data_dir, 1, 1, window, seed=422)
         # Set-up training progress bar
-        n_batch = N
+        n_batch = x_batches.shape[0]
         print("\nepoch {}/{}".format(epoch + 1, epochs))
         pb_i = Progbar(n_batch * b_size, stateful_metrics=['Loss: '])
 
-        for batch_num in range(N//2):
-            x_batch = x[batch_num].reshape(1, window, param)
-            y_batch = y[batch_num].reshape(1, window, 1)
+        for batch_num in range(n_batch):
+            x_batch = x_batches[batch_num].reshape(1, window, param)
+            y_batch = y_batches[batch_num].reshape(1, window, 1)
 
             x_batch = tf.constant(x_batch, dtype='float32')
             y_batch = tf.constant(y_batch, dtype='float32')
@@ -237,10 +231,10 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
 
         # Get batches
         #x_batches, y_batches = get_batches(x_val, y_val, b_size=b_size, shuffle=True, seed=epoch)
-
-        for batch_num in range(N//2+1, (2*N)//3):
-            x_batch = x_val[batch_num].reshape(1, window, param)
-            y_batch = y_val[batch_num].reshape(1, window, 1)
+        n_batch = x_val_batches.shape[0]
+        for batch_num in range(n_batch):
+            x_batch = x_val_batches[batch_num].reshape(1, window, param)
+            y_batch = y_val_batches[batch_num].reshape(1, window, 1)
 
             x_batch = tf.constant(x_batch, dtype='float32')
             y_batch = tf.constant(y_batch, dtype='float32')
@@ -348,6 +342,7 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
             print('Loading weights from best epoch ', start_epoch)
             loaded = tf.saved_model.load(save_model_best)
 
+            x_test, y_test = get_data_test(data_dir, window, seed=422)
             x_ = x_test[0]
             y_ = y_test[0]
             # Need to make a single prediction for the model as it needs to compile:
@@ -366,8 +361,8 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
         epoch = 0
 
     # Get batches
-
-    for batch_num in range((2*N)//3+1, N):
+    n_batch = x_test.shape[0]
+    for batch_num in range(n_batch):
         x_batch = x_test[batch_num].reshape(1, window, param)
         y_batch = y_test[batch_num].reshape(1, window, 1)
 
@@ -415,16 +410,15 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
     if generate_wav is not None:
         np.random.seed(333)
         gen_indxs = 0#np.random.choice(N, generate_wav)
-        x_gen = x_test[gen_indxs]
-        y_gen = y_test[gen_indxs]
+
         predictions, _ = transformer([
-            tf.constant(x_gen.reshape(1, window, param), dtype='float32'),
-            tf.constant(y_gen.reshape(1, window, 1)[:, :-1, :], dtype='float32')],
+            tf.constant(x_test, dtype='float32'),
+            tf.constant(y_test, dtype='float32')],
             training=False)
         predictions = predictions[:, :, 0].numpy()
-        predictions = scaler[0].inverse_transform(predictions.T)
+        predictions = scaler[0].inverse_transform(predictions.T).reshape(-1)
 
-        y_gen = scaler[0].inverse_transform(y_gen)
+        y_test = scaler[0].inverse_transform(y_test[:, -1]).reshape(-1)
 
         pred_name = 'Transf_pred.wav'
         tar_name = 'Transf_tar.wav'
@@ -437,20 +431,20 @@ def train_RAMT(data_dir, epochs, seed=422, data=None, **kwargs):
 
         # Resample
         pred = predictions.astype('int16')
-        tar = y_gen.astype('int16')
+        tar = y_test.astype('int16')
 
         # Save Wav files
-        wavfile.write(pred_dir, 44100, pred[0])
-        wavfile.write(tar_dir, 44100, tar)
+        wavfile.write(pred_dir, 44800, pred[0])
+        wavfile.write(tar_dir, 44800, tar)
         
     return results
 
 
 if __name__ == '__main__':
-    data_dir = '/scratch/users/riccarsi/Files'
+    data_dir = '../../Files'
     train_RAMT(
         data_dir=data_dir,
-        model_save_dir=r'/scratch/users/riccarsi/TrainedModels',
+        model_save_dir=r'../TrainedModels',
         save_folder='Transformer_Testing_tube',
         ckpt_flag=True,
         plot_progress=False,

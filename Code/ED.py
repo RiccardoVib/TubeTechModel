@@ -18,12 +18,12 @@ import pickle
 import numpy as np
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-#from tensorflow.compat.v1 import ConfigProto
-#from tensorflow.compat.v1 import InteractiveSession
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
 
-#config = ConfigProto()
-#config.gpu_options.allow_growth = True
-#session = InteractiveSession(config=config)
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
 
 
 def trainED(data_dir, epochs, seed=422, **kwargs):
@@ -148,13 +148,16 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     number_of_iterations = 50
 
     for n_iteration in range(number_of_iterations):
+        print("Getting data")
         x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
                                               number_of_iterations=number_of_iterations, seed=seed)
 
-        results = model.fit([x[:, :-1, :], x[:, -1, 0]], y[:, -1], batch_size=b_size, epochs=epochs, verbose=0,
-                            validation_data=([x_val[:, :-1, :], x_val[:, -1, 0]], y_val[:, -1]),
+        print("Starting Training")
+        results = model.fit([x[:, :-1, :], x[:, -1, 0].reshape(x.shape[0], 1, 1)], y[:, -1], batch_size=b_size, epochs=epochs, verbose=1,
+                            validation_data=([x_val[:, :-1, :], x_val[:, -1, 0].reshape(x_val.shape[0], 1, 1)], y_val[:, -1]),
                             callbacks=callbacks)
         print(n_iteration)
+        print("Traininng done")
 
         results = {
             'Min_val_loss': np.min(results.history['val_loss']),

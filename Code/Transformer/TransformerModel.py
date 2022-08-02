@@ -147,8 +147,8 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
 
     if generate_wav is not None:
         predictions = model.predict(x_test[:, :, :], batch_size=b_size)
-        predictions = (scaler[0].inverse_transform(predictions)).reshape(-1)
-        x_test = (scaler[0].inverse_transform(x_test[:, :, 0])).reshape(-1)
+        predictions = (scaler[0].inverse_transform(predictions[:, 0, 0])).reshape(-1)
+        x_test = (scaler[0].inverse_transform(x_test[:, -1, 0])).reshape(-1)
         y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
 
         # Define directories
@@ -199,9 +199,9 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
 
 
 if __name__ == '__main__':
-    data_dir = '../Files'
+    data_dir = '../../Files'
     seed = 422
-    # start = time.time()
+
     trainMultiAttention(data_dir=data_dir,
                         model_save_dir='../TrainedModels',
                         save_folder='MultiAttention',

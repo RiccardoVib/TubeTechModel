@@ -34,7 +34,7 @@ def data_preparation():
         fs, audio_stereo = wavfile.read(file) #fs= 96,000 Hz
         if first == True:
             inp = audio_stereo[960:L, 0]
-            inp = audio_format.pcm2float(inp)
+            inp = audio_format.pcm2float(inp)#?????? cambia se tolgo???????????
             #inp = amp*inp
             inp = signal.resample_poly(inp, 1, factor)
             collector['input'].append(inp)
@@ -44,6 +44,12 @@ def data_preparation():
         tar = audio_format.pcm2float(tar)
         tar = tar*amp
         tar = signal.resample_poly(tar, 1, factor)
+
+        # fig, ax = plt.subplots()
+        # display.waveshow(inp[indexes[ind][index]%21], sr=48000, ax=ax)
+        # display.waveshow(tars[indexes[ind][index]], sr=48000, ax=ax)
+        # plt.show()
+
 
         #target is delayed by one sample due the system processing so
         #need to be moved
