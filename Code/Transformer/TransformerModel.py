@@ -152,9 +152,9 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
 
     if generate_wav is not None:
         predictions = model.predict(x_test[:, :, :], batch_size=b_size)
-        predictions = (scaler[0].inverse_transform(predictions[:, 0, 0])).reshape(-1)
-        x_test = (scaler[0].inverse_transform(x_test[:, -1, 0])).reshape(-1)
-        y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
+        predictions = (scaler.inverse_transform(predictions[:, 0, 0])).reshape(-1)
+        x_test = (scaler.inverse_transform(x_test[:, -1, 0])).reshape(-1)
+        y_test = (scaler.inverse_transform(y_test[:, -1])).reshape(-1)
 
         # Define directories
         pred_name = '_pred.wav'

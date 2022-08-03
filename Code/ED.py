@@ -113,8 +113,6 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     else:
         raise ValueError('Please pass loss_type as either MAE or MSE')
 
-    scaler = get_scaler(data_dir=data_dir, type=type, seed=seed)
-
     callbacks = []
     if ckpt_flag:
         ckpt_path = os.path.normpath(os.path.join(model_save_dir, save_folder, 'Checkpoints', 'best', 'best.ckpt'))
@@ -199,12 +197,12 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size,
                                    verbose=0)
     print('Test Loss: ', test_loss)
-
+    scaler = get_scaler(data_dir=data_dir, type=type, seed=seed)
     if generate_wav is not None:
         predictions = model.predict([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], batch_size=b_size)
-        predictions = (scaler[0].inverse_transform(predictions)).reshape(-1)
-        x_test = (scaler[0].inverse_transform(x_test[:, :, 0])).reshape(-1)
-        y_test = (scaler[0].inverse_transform(y_test[:, -1])).reshape(-1)
+        predictions = (scaler.inverse_transform(predictions)).reshape(-1)
+        x_test = (scaler.inverse_transform(x_test[:, :, 0])).reshape(-1)
+        y_test = (scaler.inverse_transform(y_test[:, -1])).reshape(-1)
 
         # Define directories
         pred_name = '_pred.wav'
