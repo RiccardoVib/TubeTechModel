@@ -69,7 +69,7 @@ def data_preparation():
     file_data.close()
 
 
-def divede_chuncks():
+def divide_chuncks():
     data_dir = '../Files'
     file_data = open(os.path.normpath('/'.join([data_dir, 'TubeTech_data.pickle'])), 'rb')
     Z = pickle.load(file_data)
@@ -139,4 +139,4 @@ def match_amplitude():
 if __name__ == '__main__':
 
     #data_preparation()
-    divede_chuncks()
+    divide_chuncks()
