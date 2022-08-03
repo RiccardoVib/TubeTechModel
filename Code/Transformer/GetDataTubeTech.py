@@ -116,12 +116,16 @@ def prepare_data(data_dir, seed=422):
     return N, N_validation, x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler
 
 
-def get_data(data_dir, index, number_of_iterations, window, seed=422):
+def get_data(data_dir, index, number_of_iterations, window, type, seed=422):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-
-    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
     Z = pickle.load(file_data)
 
     scaler = Z['scaler']
@@ -176,12 +180,17 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
     return all_inp, all_tar, all_inp_val, all_tar_val, scaler
 
 
-def get_test_data(data_dir, window, seed=422):
+def get_test_data(data_dir, window, type, seed=422):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
     Z = pickle.load(file_data)
     x = np.array(Z['x_test'])
     y = np.array(Z['y_test'])

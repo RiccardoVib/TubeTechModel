@@ -41,6 +41,8 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     loss_type = kwargs.get('loss_type', 'mse')
     w_length = kwargs.get('w_length', 16)
     generate_wav = kwargs.get('generate_wav', None)
+    type = kwargs.get('type', 'int')
+    inference = kwargs.get('inference', False)
 
     layers_enc = len(encoder_units)
     layers_dec = len(decoder_units)
@@ -143,57 +145,57 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
     early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0000001, patience=20,
                                                                restore_best_weights=True, verbose=0)
     callbacks += [early_stopping_callback]
+    if not inference:
+        # train
+        number_of_iterations = 50
 
-    # train
-    number_of_iterations = 50
+        for n_iteration in range(number_of_iterations):
+            print("Getting data")
+            x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
+                                                  number_of_iterations=number_of_iterations, type=type, seed=seed)
 
-    for n_iteration in range(number_of_iterations):
-        print("Getting data")
-        x, y, x_val, y_val, scaler = get_data(data_dir=data_dir, window=w_length, index=n_iteration,
-                                              number_of_iterations=number_of_iterations, seed=seed)
+            print("Starting Training")
+            results = model.fit([x[:, :-1, :], x[:, -1, 0].reshape(x.shape[0], 1, 1)], y[:, -1], batch_size=b_size, epochs=epochs, verbose=1,
+                                validation_data=([x_val[:, :-1, :], x_val[:, -1, 0].reshape(x_val.shape[0], 1, 1)], y_val[:, -1]),
+                                callbacks=callbacks)
+            print(n_iteration)
+            print("Traininng done")
 
-        print("Starting Training")
-        results = model.fit([x[:, :-1, :], x[:, -1, 0].reshape(x.shape[0], 1, 1)], y[:, -1], batch_size=b_size, epochs=epochs, verbose=1,
-                            validation_data=([x_val[:, :-1, :], x_val[:, -1, 0].reshape(x_val.shape[0], 1, 1)], y_val[:, -1]),
-                            callbacks=callbacks)
-        print(n_iteration)
-        print("Traininng done")
+            results = {
+                'Min_val_loss': np.min(results.history['val_loss']),
+                'Min_train_loss': np.min(results.history['loss']),
+                'b_size': b_size,
+                'learning_rate': learning_rate,
+                'drop': drop,
+                'opt_type': opt_type,
+                'loss_type': loss_type,
+                'layers_enc': layers_enc,
+                'layers_dec': layers_dec,
+                'n_units_enc': n_units_enc,
+                'n_units_dec': n_units_dec,
+                'w_length': w_length,
+                # 'Train_loss': results.history['loss'],
+                'Val_loss': results.history['val_loss']
+            }
+            # print(results)
+            if ckpt_flag:
+                with open(os.path.normpath(
+                        '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
+                    for key, value in results.items():
+                        print('\n', key, '  : ', value, file=f)
+                    pickle.dump(results,
+                                open(os.path.normpath(
+                                    '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])),
+                                     'wb'))
 
-        results = {
-            'Min_val_loss': np.min(results.history['val_loss']),
-            'Min_train_loss': np.min(results.history['loss']),
-            'b_size': b_size,
-            'learning_rate': learning_rate,
-            'drop': drop,
-            'opt_type': opt_type,
-            'loss_type': loss_type,
-            'layers_enc': layers_enc,
-            'layers_dec': layers_dec,
-            'n_units_enc': n_units_enc,
-            'n_units_dec': n_units_dec,
-            'w_length': w_length,
-            # 'Train_loss': results.history['loss'],
-            'Val_loss': results.history['val_loss']
-        }
-        # print(results)
-        if ckpt_flag:
-            with open(os.path.normpath(
-                    '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
-                for key, value in results.items():
-                    print('\n', key, '  : ', value, file=f)
-                pickle.dump(results,
-                            open(os.path.normpath(
-                                '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])),
-                                 'wb'))
-
-    x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, seed=seed)
+    x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, type=type, seed=seed)
     if ckpt_flag:
         best = tf.train.latest_checkpoint(ckpt_dir)
         if best is not None:
             print("Restored weights from {}".format(ckpt_dir))
             model.load_weights(best)
     test_loss = model.evaluate([x_test[:, :-1, :], x_test[:, -1, 0].reshape(-1, 1)], y_test[:, -1], batch_size=b_size,
-                               verbose=0)
+                                   verbose=0)
     print('Test Loss: ', test_loss)
 
     if generate_wav is not None:
@@ -236,6 +238,7 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
         'n_units_enc': n_units_enc,
         'n_units_dec': n_units_dec,
         'w_length': w_length,
+        'type': type,
         # 'Train_loss': results.history['loss'],
         'Val_loss': results.history['val_loss']
     }
@@ -265,6 +268,8 @@ if __name__ == '__main__':
             epochs=100,
             loss_type='combined',
             generate_wav=1,
-            w_length=16)
+            w_length=16,
+            type='int',
+            inference=True)
     # end = time.time()
     # print(end - start)
