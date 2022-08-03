@@ -129,7 +129,7 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
                 # 'Train_loss': results.history['loss'],
                 'Val_loss': results.history['val_loss']
             }
-            # print(results)
+
             if ckpt_flag:
                 with open(os.path.normpath(
                         '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.txt'])), 'w') as f:
@@ -139,6 +139,7 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
                                 open(os.path.normpath(
                                     '/'.join([model_save_dir, save_folder, 'results_it_' + str(n_iteration) + '.pkl'])),
                                     'wb'))
+
 
     x_test, y_test = get_test_data(data_dir=data_dir, window=w_length, type=type, seed=seed)
     if ckpt_flag:
@@ -169,36 +170,41 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
             os.makedirs(os.path.dirname(pred_dir))
 
         # Save Wav files
-        predictions = predictions.astype('int16')
-        x_test = x_test.astype('int16')
-        y_test = y_test.astype('int16')
+        if type == 'int':
+            predictions = predictions.astype('int16')
+            x_test = x_test.astype('int16')
+            y_test = y_test.astype('int16')
         wavfile.write(pred_dir, 48000, predictions)
         wavfile.write(inp_dir, 48000, x_test)
         wavfile.write(tar_dir, 48000, y_test)
 
-    results = {
-        'Test_Loss': test_loss,
-        'Min_val_loss': np.min(results.history['val_loss']),
-        'Min_train_loss': np.min(results.history['loss']),
-        'b_size': b_size,
-        'learning_rate': learning_rate,
-        'drop': drop,
-        'opt_type': opt_type,
-        'loss_type': loss_type,
-        'd_model': d_model,
-        'ff_dim': ff_dim,
-        'num_heads': num_heads,
-        'w_length': w_length,
-        # 'Train_loss': results.history['loss'],
-        'Val_loss': results.history['val_loss']
-    }
-    print(results)
+    if not inference:
+        results = {
+            'Test_Loss': test_loss,
+            'Min_val_loss': np.min(results.history['val_loss']),
+            'Min_train_loss': np.min(results.history['loss']),
+            'b_size': b_size,
+            'learning_rate': learning_rate,
+            'drop': drop,
+            'opt_type': opt_type,
+            'loss_type': loss_type,
+            'd_model': d_model,
+            'ff_dim': ff_dim,
+            'num_heads': num_heads,
+            'w_length': w_length,
+            # 'Train_loss': results.history['loss'],
+            'Val_loss': results.history['val_loss']
+        }
+        print(results)
 
-    if ckpt_flag:
-        with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.txt'])), 'w') as f:
-            for key, value in results.items():
-                print('\n', key, '  : ', value, file=f)
-            pickle.dump(results, open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.pkl'])), 'wb'))
+        if ckpt_flag:
+            with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.txt'])), 'w') as f:
+                for key, value in results.items():
+                    print('\n', key, '  : ', value, file=f)
+                pickle.dump(results, open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.pkl'])), 'wb'))
+
+    else:
+        results = {'Test_Loss': test_loss}
 
     return results
 
@@ -209,7 +215,7 @@ if __name__ == '__main__':
 
     trainMultiAttention(data_dir=data_dir,
                         model_save_dir='../TrainedModels',
-                        save_folder='MultiAttention',
+                        save_folder='MultiAttention-int',
                         ckpt_flag=True,
                         b_size=128,
                         learning_rate=0.001,
@@ -220,5 +226,5 @@ if __name__ == '__main__':
                         loss_type='combined',
                         generate_wav=10,
                         w_length=16,
-                        type='float',
-                        inference=True)
+                        type='int',
+                        inference=False)

@@ -217,39 +217,44 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
             os.makedirs(os.path.dirname(pred_dir))
 
         # Save Wav files
-        predictions = predictions.astype('int16')
-        x_test = x_test.astype('int16')
-        y_test = y_test.astype('int16')
+        if type == 'int':
+            predictions = predictions.astype('int16')
+            x_test = x_test.astype('int16')
+            y_test = y_test.astype('int16')
+
         wavfile.write(pred_dir, 48000, predictions)
         wavfile.write(inp_dir, 48000, x_test)
         wavfile.write(tar_dir, 48000, y_test)
 
-    results = {
-        'Test_Loss': test_loss,
-        'Min_val_loss': np.min(results.history['val_loss']),
-        'Min_train_loss': np.min(results.history['loss']),
-        'b_size': b_size,
-        'learning_rate': learning_rate,
-        'drop': drop,
-        'opt_type': opt_type,
-        'loss_type': loss_type,
-        'layers_enc': layers_enc,
-        'layers_dec': layers_dec,
-        'n_units_enc': n_units_enc,
-        'n_units_dec': n_units_dec,
-        'w_length': w_length,
-        'type': type,
-        # 'Train_loss': results.history['loss'],
-        'Val_loss': results.history['val_loss']
-    }
-    print(results)
+    if not inference:
+        results = {
+            'Test_Loss': test_loss,
+            'Min_val_loss': np.min(results.history['val_loss']),
+            'Min_train_loss': np.min(results.history['loss']),
+            'b_size': b_size,
+            'learning_rate': learning_rate,
+            'drop': drop,
+            'opt_type': opt_type,
+            'loss_type': loss_type,
+            'layers_enc': layers_enc,
+            'layers_dec': layers_dec,
+            'n_units_enc': n_units_enc,
+            'n_units_dec': n_units_dec,
+            'w_length': w_length,
+            'type': type,
+            # 'Train_loss': results.history['loss'],
+            'Val_loss': results.history['val_loss']
+        }
+        print(results)
 
-    if ckpt_flag:
-        with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.txt'])), 'w') as f:
-            for key, value in results.items():
-                print('\n', key, '  : ', value, file=f)
-            pickle.dump(results, open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.pkl'])), 'wb'))
+        if ckpt_flag:
+            with open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.txt'])), 'w') as f:
+                for key, value in results.items():
+                    print('\n', key, '  : ', value, file=f)
+                pickle.dump(results, open(os.path.normpath('/'.join([model_save_dir, save_folder, 'results.pkl'])), 'wb'))
 
+    else:
+        results = {'Test_Loss': test_loss}
     return results
 
 
