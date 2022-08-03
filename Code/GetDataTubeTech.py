@@ -4,7 +4,6 @@ import os
 import numpy as np
 from Preprocess import my_scaler
 import tensorflow as tf
-#from librosa import display
 import matplotlib.pyplot as plt
 
 
@@ -116,15 +115,33 @@ def prepare_data(data_dir, seed=422):
 
     return N, N_validation, x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler
 
-
-def get_data(data_dir, index, number_of_iterations, window, seed=422):
+def get_scaler(data_dir, type, seed=422):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-
-    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
     Z = pickle.load(file_data)
-    print("uploaded chuncks")
+
+    scaler = Z['scaler']
+    return scaler
+
+def get_data(data_dir, index, number_of_iterations, window, type, seed=422):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
+    Z = pickle.load(file_data)
+
     scaler = Z['scaler']
     N = Z['N'] - 2 * Z['N_validation'] - 1
     n_iteration = N // number_of_iterations
@@ -135,23 +152,17 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
     y = np.array(Z['y'][indeces[0]: indeces[1]])
     z = np.array(Z['z'][indeces[0]: indeces[1]])
 
-    # N_val = Z['N_validation']
-    # n_iteration_v = N_val // number_of_iterations
-    # indeces_v = [int(n_iteration_v * index), int((1 + index) * n_iteration_v)]
-    #
-    # if indeces_v[1] >= N_val:
-    #     indeces_v[1] = N_val - 1
-    #
-    # x_val = np.array(Z['x_val'][indeces_v[0]: indeces_v[1]])
-    # y_val = np.array(Z['y_val'][indeces_v[0]: indeces_v[1]])
-    # z_val = np.array(Z['z_val'][indeces_v[0]: indeces_v[1]])
+    N_val = Z['N_validation']
+    n_iteration_v = N_val // number_of_iterations
+    indeces_v = [int(n_iteration_v * index), int((1 + index) * n_iteration_v)]
 
-    x_val = np.array(Z['x_val'])
-    y_val = np.array(Z['y_val'])
-    z_val = np.array(Z['z_val'])
+    if indeces_v[1] >= N_val:
+        indeces_v[1] = N_val - 1
 
-    del Z
-    print("del Z")
+    x_val = np.array(Z['x_val'][indeces_v[0]: indeces_v[1]])
+    y_val = np.array(Z['y_val'][indeces_v[0]: indeces_v[1]])
+    z_val = np.array(Z['z_val'][indeces_v[0]: indeces_v[1]])
+
     all_inp, all_tar = [], []
     length = x.shape[1]
     n_examples = x.shape[0]
@@ -165,10 +176,10 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
 
     all_inp = np.array(all_inp)
     all_tar = np.array(all_tar)
-    print("Train dataset done")
+
     all_inp_val, all_tar_val = [], []
-    n_examples = 1#x_val.shape[0]//8
-    for i in range(n_examples + n_iteration):
+    n_examples = x_val.shape[0]
+    for i in range(n_examples):
         for t in range(length - window):
             inp_temp = np.array([x_val[i, t:t + window], np.repeat(z_val[i, 0], window),
                                  np.repeat(z_val[i, 1], window), np.repeat(z_val[i, 2], window),
@@ -179,23 +190,28 @@ def get_data(data_dir, index, number_of_iterations, window, seed=422):
 
     all_inp_val = np.array(all_inp_val)
     all_tar_val = np.array(all_tar_val)
-    print("Val dataset done")
+
     return all_inp, all_tar, all_inp_val, all_tar_val, scaler
 
 
-def get_test_data(data_dir, window, seed=422):
+def get_test_data(data_dir, window, type, seed=422):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-    file_data = open(os.path.normpath('/'.join([data_dir, 'Prepared_chuncks.pickle'])), 'rb')
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
     Z = pickle.load(file_data)
     x = np.array(Z['x_test'])
     y = np.array(Z['y_test'])
     z = np.array(Z['z_test'])
 
     all_inp, all_tar = [], []
-    length = x.shape[1]
+    length = x.shape[1]//5
     n_examples = x.shape[0]
     for i in range(n_examples):
         for t in range(length - window):

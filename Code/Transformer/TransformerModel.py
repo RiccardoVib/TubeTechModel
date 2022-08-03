@@ -6,7 +6,7 @@ from Preprocess import positional_encoding
 from tensorflow.keras import layers
 import numpy as np
 import os
-from GetDataTubeTech import get_data, get_test_data
+from GetDataTubeTech import get_data, get_test_data, get_scaler
 import pickle
 from scipy.io import wavfile
 
@@ -66,6 +66,8 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
 
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(loss='mse', metrics=['mse'], optimizer=opt)
+
+
 
     callbacks = []
     if ckpt_flag:
@@ -144,9 +146,9 @@ def trainMultiAttention(data_dir, epochs, seed=422, **kwargs):
         if best is not None:
             print("Restored weights from {}".format(ckpt_dir))
             model.load_weights(best)
-    test_loss = model.evaluate(x_test[:, :, :], y_test[:, -1], batch_size=b_size,
-                                   verbose=0)
+    test_loss = model.evaluate(x_test[:, :, :], y_test[:, -1], batch_size=b_size, verbose=0)
     print('Test Loss: ', test_loss)
+    scaler = get_scaler(data_dir=data_dir, type=type, seed=seed)
 
     if generate_wav is not None:
         predictions = model.predict(x_test[:, :, :], batch_size=b_size)
@@ -218,5 +220,5 @@ if __name__ == '__main__':
                         loss_type='combined',
                         generate_wav=10,
                         w_length=16,
-                        type='int',
+                        type='float',
                         inference=True)

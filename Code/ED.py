@@ -8,7 +8,7 @@ import time
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from TrainFunctionality import combinedLoss
-from GetDataTubeTech import get_data, get_test_data
+from GetDataTubeTech import get_data, get_test_data, get_scaler
 from scipy.io import wavfile
 from scipy import signal
 from tensorflow.keras.layers import Input, Dense, LSTM
@@ -112,6 +112,8 @@ def trainED(data_dir, epochs, seed=422, **kwargs):
         model.compile(loss=combinedLoss, metrics=combinedLoss, optimizer=opt)
     else:
         raise ValueError('Please pass loss_type as either MAE or MSE')
+
+    scaler = get_scaler(data_dir=data_dir, type=type, seed=seed)
 
     callbacks = []
     if ckpt_flag:

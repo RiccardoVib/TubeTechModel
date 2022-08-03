@@ -115,6 +115,20 @@ def prepare_data(data_dir, seed=422):
 
     return N, N_validation, x, y, z, x_val, y_val, z_val, x_test, y_test, z_test, scaler
 
+def get_scaler(data_dir, type, seed=422):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    if type == 'float':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Float/Prepared_chuncks.pickle'])), 'rb')
+    elif type == 'int':
+        file_data = open(os.path.normpath('/'.join([data_dir, 'Int/Prepared_chuncks.pickle'])), 'rb')
+    else:
+        raise ValueError('problem')
+    Z = pickle.load(file_data)
+
+    scaler = Z['scaler']
+    return scaler
 
 def get_data(data_dir, index, number_of_iterations, window, type, seed=422):
     np.random.seed(seed)
@@ -197,7 +211,7 @@ def get_test_data(data_dir, window, type, seed=422):
     z = np.array(Z['z_test'])
 
     all_inp, all_tar = [], []
-    length = x.shape[1]
+    length = x.shape[1]//5
     n_examples = x.shape[0]
     for i in range(n_examples):
         for t in range(length - window):
